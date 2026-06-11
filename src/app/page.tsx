@@ -458,13 +458,21 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className="bg-[#020617] p-4 rounded border border-console-border font-mono text-sm relative">
-                        <div className="absolute top-0 left-0 bottom-0 w-8 bg-console-git-add/10 border-r border-console-git-add/20"></div>
-                        <div className="text-console-git-add whitespace-pre-wrap max-h-[150px] overflow-auto pl-6">
-                          {inputText.split('\n').map((line, i) => (
-                            <div key={i} className="flex"><span className="absolute left-2 opacity-50 select-none text-console-git-add">+</span>{line || ' '}</div>
-                          ))}
-                        </div>
+                      <div className="bg-[#020617] rounded border border-console-border font-mono text-sm max-h-[150px] overflow-auto">
+                        <table className="w-full text-left border-collapse">
+                          <tbody>
+                            {inputText.split('\n').map((line, i) => (
+                              <tr key={i} className="text-console-git-add">
+                                <td className="w-8 min-w-[32px] bg-console-git-add/10 border-r border-console-git-add/20 text-center select-none opacity-50 align-top py-0.5">
+                                  +
+                                </td>
+                                <td className="pl-4 py-0.5 whitespace-pre-wrap break-words pr-2">
+                                  {line || ' '}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
 
                       <div className="flex justify-between items-center mt-2">
@@ -519,13 +527,21 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="bg-[#020617] p-4 rounded border border-console-border font-mono text-sm relative">
-                <div className="absolute top-0 left-0 bottom-0 w-8 bg-console-git-add/10 border-r border-console-git-add/20"></div>
-                <div className="text-console-git-add whitespace-pre-wrap max-h-[300px] overflow-auto pl-6">
-                  {inspectedCommit.content.split('\n').map((line, i) => (
-                    <div key={i} className="flex"><span className="absolute left-2 opacity-50 select-none text-console-git-add">+</span>{line || ' '}</div>
-                  ))}
-                </div>
+              <div className="bg-[#020617] rounded border border-console-border font-mono text-sm max-h-[300px] overflow-auto">
+                <table className="w-full text-left border-collapse">
+                  <tbody>
+                    {inspectedCommit.content.split('\n').map((line, i) => (
+                      <tr key={i} className="text-console-git-add">
+                        <td className="w-8 min-w-[32px] bg-console-git-add/10 border-r border-console-git-add/20 text-center select-none opacity-50 align-top py-0.5">
+                          +
+                        </td>
+                        <td className="pl-4 py-0.5 whitespace-pre-wrap break-words pr-2">
+                          {line || ' '}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
               <div className="flex justify-between items-center mt-2 pt-4 border-t border-console-border border-dashed">
@@ -568,13 +584,21 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="bg-[#020617] p-4 rounded border border-console-border font-mono text-sm relative">
-                <div className="absolute top-0 left-0 bottom-0 w-8 bg-console-git-add/10 border-r border-console-git-add/20"></div>
-                <div className="text-console-text-main whitespace-pre-wrap max-h-[400px] overflow-auto pl-6">
-                  {inspectedFile.content.split('\n').map((line, i) => (
-                    <div key={i} className="flex"><span className="absolute left-2 opacity-30 select-none text-console-text-muted">{i+1}</span>{line || ' '}</div>
-                  ))}
-                </div>
+              <div className="bg-[#020617] rounded border border-console-border font-mono text-sm max-h-[400px] overflow-auto">
+                <table className="w-full text-left border-collapse">
+                  <tbody>
+                    {inspectedFile.content.split('\n').map((line, i) => (
+                      <tr key={i} className="text-console-text-main">
+                        <td className="w-10 min-w-[40px] bg-console-border/30 border-r border-console-border text-center select-none opacity-50 text-console-text-muted align-top py-0.5">
+                          {i + 1}
+                        </td>
+                        <td className="pl-4 py-0.5 whitespace-pre-wrap break-words pr-2">
+                          {line || ' '}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
