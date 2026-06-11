@@ -23,7 +23,13 @@ function tokenizeAndRoute(content: string, filename: string = ''): IngestionMeta
   let projectId = 'unknown';
   let isNewProject = false;
 
-  if (/wtkpro|toolkit|formatter|decoder|utils/g.test(normalizedText)) {
+  // Prioritize extracting the explicit project name from the markdown header format: "# Project Name - Aspect"
+  const headerMatch = content.match(/^#\s+(.*?)\s+-/m);
+  
+  if (headerMatch && headerMatch[1]) {
+    projectId = headerMatch[1].toLowerCase().trim().replace(/\s+/g, '-');
+    isNewProject = true;
+  } else if (/wtkpro|toolkit|formatter|decoder|utils/g.test(normalizedText)) {
     projectId = 'wtkpro';
   } else if (/tradeconvert|currency|rate|conversion/g.test(normalizedText)) {
     projectId = 'tradeconvert';
@@ -34,8 +40,8 @@ function tokenizeAndRoute(content: string, filename: string = ''): IngestionMeta
     } else if (filename) {
       projectId = filename.split('.')[0].toLowerCase();
     } else {
-      const headerMatch = content.match(/^#\s+(\w+)/m);
-      projectId = headerMatch ? headerMatch[1].toLowerCase() : 'unnamed-module';
+      const fallbackMatch = content.match(/^#\s+(\w+)/m);
+      projectId = fallbackMatch ? fallbackMatch[1].toLowerCase() : 'unnamed-module';
     }
   }
 
