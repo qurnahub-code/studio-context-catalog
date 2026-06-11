@@ -78,6 +78,7 @@ export default function Home() {
   const [inputText, setInputText] = useState('');
   const [metadata, setMetadata] = useState<IngestionMetadata | null>(null);
   const [commitId, setCommitId] = useState<string | null>(null);
+  const [fileQueue, setFileQueue] = useState<{content: string, filename: string}[]>([]);
   
   // Modal & Sequence States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -86,6 +87,10 @@ export default function Home() {
 
   // Commit Inspection States
   const [inspectedCommit, setInspectedCommit] = useState<CommitLog | null>(null);
+  const [isEditingCommit, setIsEditingCommit] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [editProject, setEditProject] = useState('');
+  const [editCategory, setEditCategory] = useState('');
 
   // File Inspection States
   const [inspectedFile, setInspectedFile] = useState<{name: string, content: string} | null>(null);
@@ -182,14 +187,30 @@ export default function Home() {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        const text = ev.target?.result as string;
-        setInputText(text);
-        await processInputSequence(text, file.name);
-      };
-      reader.readAsText(file);
+      const files = Array.from(e.dataTransfer.files);
+      const readPromises = files.map(file => {
+        return new Promise<{content: string, filename: string}>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            resolve({ content: ev.target?.result as string, filename: file.name });
+          };
+          reader.readAsText(file);
+        });
+      });
+      
+      Promise.all(readPromises).then(async (readFiles) => {
+        if (readFiles.length > 0) {
+          const firstFile = readFiles[0];
+          setInputText(firstFile.content);
+          
+          if (readFiles.length > 1) {
+            setFileQueue(readFiles.slice(1));
+          } else {
+            setFileQueue([]);
+          }
+          await processInputSequence(firstFile.content, firstFile.filename);
+        }
+      });
     }
   };
 
@@ -227,12 +248,20 @@ export default function Home() {
         isNewProject: metadata.isNewProject,
       };
 
-      setCommits([newCommitLog, ...commits]);
-      setInputText('');
-      setMetadata(null);
-      setCommitId(null);
-      setIsModalOpen(false);
-      setProcessingStep(-1);
+      setCommits(prev => [newCommitLog, ...prev]);
+
+      if (fileQueue.length > 0) {
+        const nextFile = fileQueue[0];
+        setFileQueue(prev => prev.slice(1));
+        setInputText(nextFile.content);
+        await processInputSequence(nextFile.content, nextFile.filename);
+      } else {
+        setInputText('');
+        setMetadata(null);
+        setCommitId(null);
+        setIsModalOpen(false);
+        setProcessingStep(-1);
+      }
     }
   };
 
@@ -242,6 +271,7 @@ export default function Home() {
     setInputText('');
     setMetadata(null);
     setCommitId(null);
+    setFileQueue([]);
   };
 
   const handleRollback = async () => {
@@ -250,6 +280,50 @@ export default function Home() {
       setInspectedCommit(null);
       setInputText(text);
       await processInputSequence(text, `rollback-${inspectedCommit.project}.md`);
+    }
+  };
+
+  const handleUpdateCommit = async () => {
+    if (!inspectedCommit) return;
+    const { error } = await supabase
+      .from('commits')
+      .update({
+        content: editContent,
+        project_id: editProject,
+        category: editCategory
+      })
+      .eq('id', inspectedCommit.id);
+
+    if (!error) {
+      setCommits(prev => prev.map(c => c.id === inspectedCommit.id ? {
+        ...c,
+        content: editContent,
+        project: editProject,
+        category: editCategory
+      } : c));
+      setIsEditingCommit(false);
+      setInspectedCommit({
+        ...inspectedCommit,
+        content: editContent,
+        project: editProject,
+        category: editCategory
+      });
+    }
+  };
+
+  const handleDeleteCommit = async () => {
+    if (!inspectedCommit) return;
+    const confirmed = window.confirm("Are you sure you want to permanently delete this commit?");
+    if (!confirmed) return;
+    
+    const { error } = await supabase
+      .from('commits')
+      .delete()
+      .eq('id', inspectedCommit.id);
+
+    if (!error) {
+      setCommits(prev => prev.filter(c => c.id !== inspectedCommit.id));
+      setInspectedCommit(null);
     }
   };
 
@@ -363,7 +437,13 @@ export default function Home() {
             {commits.map((commit, idx) => (
               <button 
                 key={idx} 
-                onClick={() => setInspectedCommit(commit)}
+                onClick={() => {
+                  setInspectedCommit(commit);
+                  setIsEditingCommit(false);
+                  setEditContent(commit.content);
+                  setEditProject(commit.project);
+                  setEditCategory(commit.category);
+                }}
                 className="interactive relative pl-8 py-4 group w-full text-left bg-transparent border-none outline-none focus:outline-none"
               >
                 <div className="absolute left-0 top-5 w-[23px] h-px bg-console-border group-hover:bg-console-accent-cyan group-hover:w-[27px] transition-all duration-300"></div>
@@ -393,6 +473,11 @@ export default function Home() {
               <div className="flex items-center gap-2">
                 <span className="text-base">⚙️</span>
                 <h3 className="font-mono text-xs text-console-text-muted tracking-widest">SYSTEM PROCESSING SEQUENCE</h3>
+                {fileQueue.length > 0 && (
+                  <span className="ml-4 bg-console-accent-cyan text-console-bg px-2 py-0.5 rounded text-[10px] font-bold">
+                    {fileQueue.length} IN QUEUE
+                  </span>
+                )}
               </div>
               <button onClick={closeModal} className="text-console-text-muted hover:text-console-text-main font-mono text-xs">
                 [ ESC / CANCEL ]
@@ -533,40 +618,92 @@ export default function Home() {
                    <h4 className="text-console-accent-cyan uppercase tracking-widest text-xs mb-1">Snapshot Info</h4>
                    <div className="text-console-text-main text-lg font-bold">{inspectedCommit.id}</div>
                 </div>
-                <div className="text-right text-xs text-console-text-muted space-y-1">
-                   <div>Project: <span className="text-console-text-main">{inspectedCommit.project}</span></div>
-                   <div>Category: <span className="text-console-text-main">{inspectedCommit.category}.md</span></div>
-                   <div>Time: <span className="text-console-text-main">{inspectedCommit.time}</span></div>
-                </div>
+                {isEditingCommit ? (
+                  <div className="text-right text-xs text-console-text-muted space-y-2">
+                    <div className="flex items-center justify-end gap-2">
+                      Project: <input className="bg-console-bg border border-console-border rounded px-2 py-1 text-console-text-main focus:outline-none focus:border-console-accent-cyan" value={editProject} onChange={e => setEditProject(e.target.value)} />
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      Category: <input className="bg-console-bg border border-console-border rounded px-2 py-1 text-console-text-main focus:outline-none focus:border-console-accent-cyan" value={editCategory} onChange={e => setEditCategory(e.target.value)} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-right text-xs text-console-text-muted space-y-1">
+                     <div>Project: <span className="text-console-text-main">{inspectedCommit.project}</span></div>
+                     <div>Category: <span className="text-console-text-main">{inspectedCommit.category}.md</span></div>
+                     <div>Time: <span className="text-console-text-main">{inspectedCommit.time}</span></div>
+                  </div>
+                )}
               </div>
 
-              <div className="bg-[#020617] rounded border border-console-border font-mono text-sm max-h-[300px] overflow-auto">
-                <table className="w-full text-left border-collapse">
-                  <tbody>
-                    {inspectedCommit.content.split('\n').map((line, i) => (
-                      <tr key={i} className="text-console-git-add">
-                        <td className="w-8 min-w-[32px] bg-console-git-add/10 border-r border-console-git-add/20 text-center select-none opacity-50 align-top py-0.5">
-                          +
-                        </td>
-                        <td className="pl-4 py-0.5 whitespace-pre-wrap break-words pr-2">
-                          {line || ' '}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="bg-[#020617] rounded border border-console-border font-mono text-sm max-h-[300px] overflow-auto flex flex-col">
+                {isEditingCommit ? (
+                  <textarea
+                    className="w-full h-full min-h-[250px] bg-transparent text-console-git-add p-4 focus:outline-none resize-none"
+                    value={editContent}
+                    onChange={e => setEditContent(e.target.value)}
+                  />
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <tbody>
+                      {inspectedCommit.content.split('\n').map((line, i) => (
+                        <tr key={i} className="text-console-git-add">
+                          <td className="w-8 min-w-[32px] bg-console-git-add/10 border-r border-console-git-add/20 text-center select-none opacity-50 align-top py-0.5">
+                            +
+                          </td>
+                          <td className="pl-4 py-0.5 whitespace-pre-wrap break-words pr-2">
+                            {line || ' '}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
 
               <div className="flex justify-between items-center mt-2 pt-4 border-t border-console-border border-dashed">
-                <button 
-                  onClick={handleRollback}
-                  className="interactive bg-console-git-del/10 border border-console-git-del text-console-git-del px-6 py-3 rounded font-bold uppercase tracking-widest text-xs hover:bg-console-git-del/20 hover:shadow-[0_0_15px_rgba(248,113,113,0.15)] transition-all"
-                >
-                  [ Initiate Rollback ]
-                </button>
-                <div className="text-xs text-console-text-muted max-w-xs text-right">
-                  Initiating a rollback will prepare this code snippet in the processing queue for your final review.
+                <div className="flex gap-2">
+                  {isEditingCommit ? (
+                    <>
+                      <button 
+                        onClick={handleUpdateCommit}
+                        className="interactive bg-console-accent-cyan text-console-bg px-6 py-3 rounded font-bold uppercase tracking-widest text-xs hover:opacity-90 shadow-[0_0_15px_rgba(56,189,248,0.2)]"
+                      >
+                        [ Save Changes ]
+                      </button>
+                      <button 
+                        onClick={() => setIsEditingCommit(false)}
+                        className="interactive text-console-text-muted border border-console-border px-4 py-3 rounded text-xs hover:text-console-text-main hover:border-console-text-muted"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button 
+                        onClick={() => setIsEditingCommit(true)}
+                        className="interactive text-console-text-muted border border-console-border px-4 py-3 rounded text-xs hover:text-console-text-main hover:border-console-text-muted"
+                      >
+                        [ Edit ]
+                      </button>
+                      <button 
+                        onClick={handleDeleteCommit}
+                        className="interactive text-console-git-del border border-console-git-del/50 px-4 py-3 rounded text-xs hover:bg-console-git-del/10 hover:border-console-git-del transition-colors"
+                      >
+                        [ Delete ]
+                      </button>
+                    </>
+                  )}
                 </div>
+                
+                {!isEditingCommit && (
+                  <button 
+                    onClick={handleRollback}
+                    className="interactive bg-console-git-del/10 border border-console-git-del text-console-git-del px-6 py-3 rounded font-bold uppercase tracking-widest text-xs hover:bg-console-git-del/20 hover:shadow-[0_0_15px_rgba(248,113,113,0.15)] transition-all"
+                  >
+                    [ Initiate Rollback ]
+                  </button>
+                )}
               </div>
             </div>
           </div>
