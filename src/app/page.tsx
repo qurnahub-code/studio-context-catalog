@@ -95,6 +95,23 @@ export default function Home() {
   // File Inspection States
   const [inspectedFile, setInspectedFile] = useState<{name: string, content: string} | null>(null);
 
+  // Left Panel Node Editor
+  const [editingNode, setEditingNode] = useState<{
+    project: string,
+    category: string,
+    content: string,
+    newCategory: string,
+    newContent: string
+  } | null>(null);
+
+  // Copy Widget State
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const [commits, setCommits] = useState<CommitLog[]>([]);
 
   useEffect(() => {
@@ -347,7 +364,7 @@ export default function Home() {
       <main className="grid grid-cols-1 lg:grid-cols-12 gap-px bg-console-border min-h-[calc(100vh-65px)] relative">
         
         {/* Left Panel: Infrastructure & Projects */}
-        <aside className="lg:col-span-3 bg-console-bg p-6 flex flex-col gap-8">
+        <aside className="lg:col-span-4 bg-console-bg p-6 flex flex-col gap-8">
           <div>
             <h2 className="text-xs font-bold text-console-text-muted mb-4 tracking-widest flex items-center gap-2">
               <span className="text-base">📁</span> INFRASTRUCTURE
@@ -382,17 +399,43 @@ export default function Home() {
                     <span className="text-console-text-muted">
                       {idx === projectsMap.size - 1 ? '└─' : '├─'}
                     </span> 🌐 {project}
+                    <span className="ml-auto bg-console-border text-console-text-muted px-1.5 py-0.5 rounded text-[10px]">
+                      {categories.size} nodes
+                    </span>
                   </div>
-                  <ul className="space-y-2 pl-6 border-l border-console-border ml-2 text-console-text-muted">
+                  <ul className="space-y-1 pl-6 border-l border-console-border ml-2 text-console-text-muted">
                     {Array.from(categories).map((cat, catIdx) => (
                       <li 
                         key={catIdx} 
-                        onClick={() => handleOpenFile(project, cat)}
-                        className="hover:text-console-text-main cursor-pointer transition-ui flex items-center gap-2"
+                        className="group flex items-center gap-2 hover:bg-console-panel/50 py-1 px-2 rounded -ml-2 transition-ui"
                       >
                         <span className="text-console-text-muted">
                            {catIdx === categories.size - 1 ? '└─' : '├─'}
-                        </span> {cat}.md
+                        </span>
+                        <span 
+                          className="hover:text-console-text-main cursor-pointer flex-1"
+                          onClick={() => handleOpenFile(project, cat)}
+                        >
+                          {cat}.md
+                        </span>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const latestCommit = commits.find(c => c.project === project && c.category === cat);
+                            if (latestCommit) {
+                              setEditingNode({
+                                project,
+                                category: cat,
+                                content: latestCommit.content,
+                                newCategory: cat,
+                                newContent: latestCommit.content
+                              });
+                            }
+                          }}
+                          className="text-console-text-muted hover:text-console-accent-cyan opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                        >
+                          [✎]
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -403,7 +446,7 @@ export default function Home() {
         </aside>
 
         {/* Center Panel: Ingestion Workspace */}
-        <section className="lg:col-span-6 bg-console-bg p-6 flex flex-col gap-6">
+        <section className="lg:col-span-4 bg-console-bg p-6 flex flex-col gap-6">
           <h2 className="text-xs font-bold text-console-text-muted tracking-widest flex items-center gap-2 mb-2">
             <span className="text-base">🎛️</span> INGESTION WORKSPACE
           </h2>
@@ -428,7 +471,7 @@ export default function Home() {
         </section>
 
         {/* Right Panel: Commits */}
-        <aside className="lg:col-span-3 bg-console-bg p-6">
+        <aside className="lg:col-span-4 bg-console-bg p-6">
           <h2 className="text-xs font-bold text-console-text-muted mb-6 tracking-widest flex items-center gap-2">
             <span className="text-base">🎫</span> RECENT COMMITS
           </h2>
@@ -606,9 +649,14 @@ export default function Home() {
                 <span className="text-base">🔍</span>
                 <h3 className="font-mono text-xs text-console-text-muted tracking-widest">HISTORICAL COMMIT INSPECTION</h3>
               </div>
-              <button onClick={() => setInspectedCommit(null)} className="text-console-text-muted hover:text-console-text-main font-mono text-xs transition-colors">
-                [ ESC / CLOSE ]
-              </button>
+              <div className="flex items-center gap-4">
+                <button onClick={() => handleCopy(inspectedCommit.content)} className="text-console-text-muted hover:text-console-text-main font-mono text-xs transition-colors">
+                  [ {copied ? 'COPIED!' : 'COPY CONTENT'} ]
+                </button>
+                <button onClick={() => setInspectedCommit(null)} className="text-console-text-muted hover:text-console-text-main font-mono text-xs transition-colors">
+                  [ ESC / CLOSE ]
+                </button>
+              </div>
             </div>
             
             <div className="p-8 font-mono text-sm flex flex-col gap-6 max-h-[80vh] overflow-auto">
@@ -720,9 +768,14 @@ export default function Home() {
                 <span className="text-base">📄</span>
                 <h3 className="font-mono text-xs text-console-text-muted tracking-widest">LIVE FILE INSPECTION</h3>
               </div>
-              <button onClick={() => setInspectedFile(null)} className="text-console-text-muted hover:text-console-text-main font-mono text-xs transition-colors">
-                [ ESC / CLOSE ]
-              </button>
+              <div className="flex items-center gap-4">
+                <button onClick={() => handleCopy(inspectedFile.content)} className="text-console-text-muted hover:text-console-text-main font-mono text-xs transition-colors">
+                  [ {copied ? 'COPIED!' : 'COPY CONTENT'} ]
+                </button>
+                <button onClick={() => setInspectedFile(null)} className="text-console-text-muted hover:text-console-text-main font-mono text-xs transition-colors">
+                  [ ESC / CLOSE ]
+                </button>
+              </div>
             </div>
             
             <div className="p-8 font-mono text-sm flex flex-col gap-6 max-h-[80vh] overflow-auto">
@@ -749,6 +802,98 @@ export default function Home() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Node Editor Modal (Diff View) */}
+      {editingNode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020617]/85 backdrop-blur-md p-4 transition-opacity duration-300">
+          <div className="modal-enter w-full max-w-6xl bg-console-panel border border-console-border rounded-lg shadow-2xl flex flex-col overflow-hidden h-[90vh]">
+            
+            <div className="bg-[#0f172a] px-4 py-3 border-b border-console-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">📝</span>
+                <h3 className="font-mono text-xs text-console-text-muted tracking-widest">NODE EDITOR: {editingNode.project}</h3>
+              </div>
+              <button onClick={() => setEditingNode(null)} className="text-console-text-muted hover:text-console-text-main font-mono text-xs transition-colors">
+                [ ESC / CLOSE ]
+              </button>
+            </div>
+            
+            <div className="p-6 font-mono flex flex-col gap-4 flex-1 overflow-hidden">
+              <div className="flex gap-4 items-center">
+                <span className="text-sm text-console-text-muted">Filename/Category:</span>
+                <input 
+                  className="bg-console-bg border border-console-border rounded px-3 py-1.5 text-console-text-main focus:outline-none focus:border-console-accent-cyan w-64" 
+                  value={editingNode.newCategory} 
+                  onChange={e => setEditingNode({...editingNode, newCategory: e.target.value})} 
+                />
+                <span className="text-sm text-console-text-muted">.md</span>
+              </div>
+              
+              <div className="flex gap-4 flex-1 min-h-0">
+                <div className="flex-1 border border-console-border bg-[#020617] rounded flex flex-col">
+                  <div className="bg-console-border/30 px-3 py-1 text-xs text-console-text-muted border-b border-console-border uppercase tracking-widest">
+                    Original Content
+                  </div>
+                  <textarea 
+                    className="flex-1 w-full p-4 bg-transparent text-console-git-del/70 focus:outline-none resize-none text-sm"
+                    value={editingNode.content}
+                    readOnly
+                  />
+                </div>
+                <div className="flex-1 border border-console-accent-cyan/30 bg-[#020617] rounded flex flex-col relative shadow-[0_0_15px_rgba(56,189,248,0.05)]">
+                  <div className="bg-console-accent-cyan/10 px-3 py-1 text-xs text-console-accent-cyan border-b border-console-accent-cyan/30 uppercase tracking-widest flex justify-between">
+                    <span>New Content (Live Edit)</span>
+                  </div>
+                  <textarea 
+                    className="flex-1 w-full p-4 bg-transparent text-console-git-add focus:outline-none resize-none text-sm"
+                    value={editingNode.newContent}
+                    onChange={e => setEditingNode({...editingNode, newContent: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center mt-2">
+                <div className="text-xs text-console-text-muted">
+                  Saving will generate a <span className="text-console-accent-cyan font-bold">new commit version</span> in the timeline.
+                </div>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => setEditingNode(null)}
+                    className="interactive text-console-text-muted border border-console-border px-6 py-2 rounded text-xs hover:text-console-text-main hover:border-console-text-muted"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      const hash = await generateCommitId(editingNode.newContent, Date.now());
+                      const newDbCommit = {
+                        id: hash,
+                        project_id: editingNode.project,
+                        category: editingNode.newCategory,
+                        content: editingNode.newContent,
+                        is_new_project: false,
+                      };
+                      await supabase.from('commits').insert([newDbCommit]);
+                      const newCommitLog: CommitLog = {
+                        id: hash,
+                        project: editingNode.project,
+                        time: 'Just now',
+                        content: editingNode.newContent,
+                        category: editingNode.newCategory,
+                        isNewProject: false,
+                      };
+                      setCommits(prev => [newCommitLog, ...prev]);
+                      setEditingNode(null);
+                    }}
+                    className="interactive bg-console-accent-cyan text-console-bg px-6 py-2 rounded font-bold uppercase tracking-widest text-xs hover:opacity-90 shadow-[0_0_15px_rgba(56,189,248,0.2)]"
+                  >
+                    [ Save New Version ]
+                  </button>
+                </div>
               </div>
             </div>
           </div>
