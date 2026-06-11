@@ -327,6 +327,8 @@ export default function Home() {
                 <div className="font-mono text-sm group-hover:text-console-text-main transition-colors">
                   <span className="text-console-text-muted">[</span>
                   <span className="text-console-accent-cyan">{commit.project}</span>
+                  <span className="text-console-text-muted">/</span>
+                  <span className="text-console-git-add">{commit.category}.md</span>
                   <span className="text-console-text-muted">]</span>{' '}
                   <span className="text-console-text-main">{commit.id}</span>
                 </div>
