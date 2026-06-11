@@ -1,4 +1,4 @@
-# Niche Storefront Dashboard - Styling & Design
+# Niche Storefront Dashboard - Design
 
 ## CSS Architecture
 - **Framework**: Tailwind CSS v4 (`@tailwindcss/vite`).

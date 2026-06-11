@@ -46,7 +46,14 @@ function tokenizeAndRoute(content: string, filename: string = ''): IngestionMeta
   }
 
   let fileCategory: 'context' | 'design' | 'history' | 'unknown' = 'unknown';
-  if (/theme|tailwind|color|hex|layout|ui|tokens/g.test(normalizedText)) {
+  
+  if (filename.toLowerCase().includes('design') || filename.toLowerCase().includes('styling')) {
+    fileCategory = 'design';
+  } else if (filename.toLowerCase().includes('context') || filename.toLowerCase().includes('architecture')) {
+    fileCategory = 'context';
+  } else if (filename.toLowerCase().includes('history') || filename.toLowerCase().includes('changelog')) {
+    fileCategory = 'history';
+  } else if (/theme|tailwind|color|hex|layout|ui|tokens/g.test(normalizedText)) {
     fileCategory = 'design';
   } else if (/changelog|v\d\.|fixed|added|optimized|milestone/g.test(normalizedText)) {
     fileCategory = 'history';

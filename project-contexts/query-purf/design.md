@@ -1,4 +1,4 @@
-# Query Purf - Styling & Design
+# Query Purf - Design
 
 ## CSS Architecture
 - **Framework**: Tailwind CSS configured via `tailwind.config.ts`.
