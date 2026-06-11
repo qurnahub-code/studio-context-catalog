@@ -74,6 +74,9 @@ export default function Home() {
   // Commit Inspection States
   const [inspectedCommit, setInspectedCommit] = useState<CommitLog | null>(null);
 
+  // File Inspection States
+  const [inspectedFile, setInspectedFile] = useState<{name: string, content: string} | null>(null);
+
   const [commits, setCommits] = useState<CommitLog[]>([]);
 
   useEffect(() => {
@@ -105,6 +108,25 @@ export default function Home() {
     }
     projectsMap.get(c.project)?.add(c.category);
   });
+
+  const handleOpenInfrastructure = (filename: string) => {
+    let content = '';
+    if (filename === 'global-rules.md') {
+      content = `# GLOBAL STUDIO RULES\n\n1. All commits must be immutable.\n2. Design components must follow Emil Kowalski's animation principles.\n3. Keep the UI as a precision technical console.`;
+    } else if (filename === 'system-tokens.md') {
+      content = `# SYSTEM TOKENS\n\n- Primary: #38bdf8 (Cyan)\n- Background: #020617 (Slate 950)\n- Border: #1e293b (Slate 800)\n- Success: #10b981 (Emerald)\n- Danger: #ef4444 (Red)`;
+    }
+    setInspectedFile({ name: `Infrastructure / ${filename}`, content });
+  };
+
+  const handleOpenFile = (project: string, category: string) => {
+    const latestCommit = commits.find(c => c.project === project && c.category === category);
+    if (latestCommit) {
+      setInspectedFile({ name: `${project} / ${category}.md`, content: latestCommit.content });
+    } else {
+      setInspectedFile({ name: `${project} / ${category}.md`, content: "No content found." });
+    }
+  };
 
   const processInputSequence = async (content: string, filename: string = '') => {
     setIsModalOpen(true);
@@ -244,10 +266,16 @@ export default function Home() {
               <span className="text-base">📁</span> INFRASTRUCTURE
             </h2>
             <ul className="space-y-2 font-mono text-sm pl-6 border-l border-console-border ml-2">
-              <li className="flex items-center gap-2 cursor-pointer hover:text-console-accent-cyan transition-ui">
+              <li 
+                onClick={() => handleOpenInfrastructure('global-rules.md')}
+                className="flex items-center gap-2 cursor-pointer hover:text-console-accent-cyan transition-ui"
+              >
                 <span className="text-console-text-muted">├─</span> global-rules.md
               </li>
-              <li className="flex items-center gap-2 cursor-pointer hover:text-console-accent-cyan transition-ui">
+              <li 
+                onClick={() => handleOpenInfrastructure('system-tokens.md')}
+                className="flex items-center gap-2 cursor-pointer hover:text-console-accent-cyan transition-ui"
+              >
                 <span className="text-console-text-muted">└─</span> system-tokens.md
               </li>
             </ul>
@@ -270,7 +298,11 @@ export default function Home() {
                   </div>
                   <ul className="space-y-2 pl-6 border-l border-console-border ml-2 text-console-text-muted">
                     {Array.from(categories).map((cat, catIdx) => (
-                      <li key={catIdx} className="hover:text-console-text-main cursor-pointer transition-ui flex items-center gap-2">
+                      <li 
+                        key={catIdx} 
+                        onClick={() => handleOpenFile(project, cat)}
+                        className="hover:text-console-text-main cursor-pointer transition-ui flex items-center gap-2"
+                      >
                         <span className="text-console-text-muted">
                            {catIdx === categories.size - 1 ? '└─' : '├─'}
                         </span> {cat}.md
@@ -505,6 +537,43 @@ export default function Home() {
                 </button>
                 <div className="text-xs text-console-text-muted max-w-xs text-right">
                   Initiating a rollback will prepare this code snippet in the processing queue for your final review.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File Inspection Modal */}
+      {inspectedFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020617]/85 backdrop-blur-md p-4 transition-opacity duration-300">
+          <div className="modal-enter w-full max-w-3xl bg-console-panel border border-console-border rounded-lg shadow-2xl flex flex-col overflow-hidden">
+            
+            <div className="bg-[#0f172a] px-4 py-3 border-b border-console-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">📄</span>
+                <h3 className="font-mono text-xs text-console-text-muted tracking-widest">LIVE FILE INSPECTION</h3>
+              </div>
+              <button onClick={() => setInspectedFile(null)} className="text-console-text-muted hover:text-console-text-main font-mono text-xs transition-colors">
+                [ ESC / CLOSE ]
+              </button>
+            </div>
+            
+            <div className="p-8 font-mono text-sm flex flex-col gap-6 max-h-[80vh] overflow-auto">
+              
+              <div className="bg-[#020617] border border-console-border rounded p-4 shadow-lg flex items-center justify-between">
+                <div>
+                   <h4 className="text-console-accent-cyan uppercase tracking-widest text-xs mb-1">Target File</h4>
+                   <div className="text-console-text-main text-lg font-bold">{inspectedFile.name}</div>
+                </div>
+              </div>
+
+              <div className="bg-[#020617] p-4 rounded border border-console-border font-mono text-sm relative">
+                <div className="absolute top-0 left-0 bottom-0 w-8 bg-console-git-add/10 border-r border-console-git-add/20"></div>
+                <div className="text-console-text-main whitespace-pre-wrap max-h-[400px] overflow-auto pl-6">
+                  {inspectedFile.content.split('\n').map((line, i) => (
+                    <div key={i} className="flex"><span className="absolute left-2 opacity-30 select-none text-console-text-muted">{i+1}</span>{line || ' '}</div>
+                  ))}
                 </div>
               </div>
             </div>
