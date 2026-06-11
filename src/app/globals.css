@@ -64,3 +64,22 @@ button.transitioning, .interactive.transitioning {
 .transition-ui {
   transition: all 200ms var(--ease-out);
 }
+
+/* Custom Console Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-console-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-console-text-muted);
+}
