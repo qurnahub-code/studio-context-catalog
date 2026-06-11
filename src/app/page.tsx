@@ -8,6 +8,15 @@ export interface IngestionMetadata {
   isNewProject: boolean;
 }
 
+export interface CommitLog {
+  id: string;
+  project: string;
+  time: string;
+  content: string;
+  category: string;
+  isNewProject: boolean;
+}
+
 function tokenizeAndRoute(content: string, filename: string = ''): IngestionMetadata {
   const normalizedText = (content + ' ' + filename).toLowerCase();
   let projectId = 'unknown';
@@ -61,10 +70,13 @@ export default function Home() {
   const [processingStep, setProcessingStep] = useState(-1);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const [commits, setCommits] = useState<{ id: string; project: string; time: string }[]>([
-    { id: '7a1b3c9', project: 'wtkpro', time: 'Just now' },
-    { id: 'c8e2f4a', project: 'tradeconvert', time: '2 hours ago' },
-    { id: 'f9d0a1b', project: 'wtkpro', time: 'Yesterday' },
+  // Commit Inspection States
+  const [inspectedCommit, setInspectedCommit] = useState<CommitLog | null>(null);
+
+  const [commits, setCommits] = useState<CommitLog[]>([
+    { id: '7a1b3c9', project: 'wtkpro', time: 'Just now', content: '# wtkpro\nAdded some tools', category: 'context', isNewProject: false },
+    { id: 'c8e2f4a', project: 'tradeconvert', time: '2 hours ago', content: 'Updated conversion rates', category: 'context', isNewProject: false },
+    { id: 'f9d0a1b', project: 'wtkpro', time: 'Yesterday', content: 'Initial wtkpro context', category: 'context', isNewProject: true },
   ]);
 
   const processInputSequence = async (content: string, filename: string = '') => {
@@ -132,7 +144,16 @@ export default function Home() {
       setIsSuccess(true);
       await new Promise(r => setTimeout(r, 1000)); // Auto-close delay
       
-      setCommits([{ id: commitId, project: metadata.projectId, time: 'Just now' }, ...commits]);
+      const newCommit: CommitLog = {
+        id: commitId,
+        project: metadata.projectId,
+        time: 'Just now',
+        content: inputText,
+        category: metadata.fileCategory,
+        isNewProject: metadata.isNewProject,
+      };
+
+      setCommits([newCommit, ...commits]);
       setInputText('');
       setMetadata(null);
       setCommitId(null);
@@ -147,6 +168,15 @@ export default function Home() {
     setInputText('');
     setMetadata(null);
     setCommitId(null);
+  };
+
+  const handleRollback = async () => {
+    if (inspectedCommit) {
+      const text = inspectedCommit.content;
+      setInspectedCommit(null);
+      setInputText(text);
+      await processInputSequence(text, `rollback-${inspectedCommit.project}.md`);
+    }
   };
 
   return (
@@ -245,18 +275,22 @@ export default function Home() {
           
           <div className="space-y-0 relative before:absolute before:inset-y-0 before:left-[11px] before:w-px before:bg-console-border">
             {commits.map((commit, idx) => (
-              <div key={idx} className="relative pl-8 py-4 group">
-                <div className="absolute left-0 top-5 w-[23px] h-px bg-console-border group-hover:bg-console-accent-cyan transition-ui"></div>
-                <div className="absolute left-[-2px] top-[18px] w-[6px] h-[6px] rounded-full border-2 border-console-bg bg-console-text-muted group-hover:bg-console-accent-cyan transition-ui"></div>
+              <button 
+                key={idx} 
+                onClick={() => setInspectedCommit(commit)}
+                className="interactive relative pl-8 py-4 group w-full text-left bg-transparent border-none outline-none focus:outline-none"
+              >
+                <div className="absolute left-0 top-5 w-[23px] h-px bg-console-border group-hover:bg-console-accent-cyan group-hover:w-[27px] transition-all duration-300"></div>
+                <div className="absolute left-[-2px] top-[18px] w-[6px] h-[6px] rounded-full border-2 border-console-bg bg-console-text-muted group-hover:bg-console-accent-cyan transition-all duration-300"></div>
                 
-                <div className="font-mono text-sm">
+                <div className="font-mono text-sm group-hover:text-console-text-main transition-colors">
                   <span className="text-console-text-muted">[</span>
                   <span className="text-console-accent-cyan">{commit.project}</span>
                   <span className="text-console-text-muted">]</span>{' '}
                   <span className="text-console-text-main">{commit.id}</span>
                 </div>
-                <div className="text-xs text-console-text-muted mt-1">{commit.time}</div>
-              </div>
+                <div className="text-xs text-console-text-muted mt-1 group-hover:text-console-accent-cyan/70 transition-colors">{commit.time}</div>
+              </button>
             ))}
           </div>
         </aside>
@@ -376,6 +410,60 @@ export default function Home() {
                 </div>
               )}
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Commit Inspection Modal */}
+      {inspectedCommit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020617]/85 backdrop-blur-md p-4 transition-opacity duration-300">
+          <div className="modal-enter w-full max-w-3xl bg-console-panel border border-console-border rounded-lg shadow-2xl flex flex-col overflow-hidden">
+            
+            <div className="bg-[#0f172a] px-4 py-3 border-b border-console-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🔍</span>
+                <h3 className="font-mono text-xs text-console-text-muted tracking-widest">HISTORICAL COMMIT INSPECTION</h3>
+              </div>
+              <button onClick={() => setInspectedCommit(null)} className="text-console-text-muted hover:text-console-text-main font-mono text-xs transition-colors">
+                [ ESC / CLOSE ]
+              </button>
+            </div>
+            
+            <div className="p-8 font-mono text-sm flex flex-col gap-6 max-h-[80vh] overflow-auto">
+              
+              <div className="bg-[#020617] border border-console-border rounded p-4 shadow-lg flex items-center justify-between">
+                <div>
+                   <h4 className="text-console-accent-cyan uppercase tracking-widest text-xs mb-1">Snapshot Info</h4>
+                   <div className="text-console-text-main text-lg font-bold">{inspectedCommit.id}</div>
+                </div>
+                <div className="text-right text-xs text-console-text-muted space-y-1">
+                   <div>Project: <span className="text-console-text-main">{inspectedCommit.project}</span></div>
+                   <div>Category: <span className="text-console-text-main">{inspectedCommit.category}.md</span></div>
+                   <div>Time: <span className="text-console-text-main">{inspectedCommit.time}</span></div>
+                </div>
+              </div>
+
+              <div className="bg-[#020617] p-4 rounded border border-console-border font-mono text-sm relative">
+                <div className="absolute top-0 left-0 bottom-0 w-8 bg-console-git-add/10 border-r border-console-git-add/20"></div>
+                <div className="text-console-git-add whitespace-pre-wrap max-h-[300px] overflow-auto pl-6">
+                  {inspectedCommit.content.split('\n').map((line, i) => (
+                    <div key={i} className="flex"><span className="absolute left-2 opacity-50 select-none text-console-git-add">+</span>{line || ' '}</div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center mt-2 pt-4 border-t border-console-border border-dashed">
+                <button 
+                  onClick={handleRollback}
+                  className="interactive bg-console-git-del/10 border border-console-git-del text-console-git-del px-6 py-3 rounded font-bold uppercase tracking-widest text-xs hover:bg-console-git-del/20 hover:shadow-[0_0_15px_rgba(248,113,113,0.15)] transition-all"
+                >
+                  [ Initiate Rollback ]
+                </button>
+                <div className="text-xs text-console-text-muted max-w-xs text-right">
+                  Initiating a rollback will prepare this code snippet in the processing queue for your final review.
+                </div>
+              </div>
             </div>
           </div>
         </div>
