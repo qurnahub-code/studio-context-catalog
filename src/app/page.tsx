@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export interface IngestionMetadata {
   projectId: string;
@@ -73,11 +74,37 @@ export default function Home() {
   // Commit Inspection States
   const [inspectedCommit, setInspectedCommit] = useState<CommitLog | null>(null);
 
-  const [commits, setCommits] = useState<CommitLog[]>([
-    { id: '7a1b3c9', project: 'wtkpro', time: 'Just now', content: '# wtkpro\nAdded some tools', category: 'context', isNewProject: false },
-    { id: 'c8e2f4a', project: 'tradeconvert', time: '2 hours ago', content: 'Updated conversion rates', category: 'context', isNewProject: false },
-    { id: 'f9d0a1b', project: 'wtkpro', time: 'Yesterday', content: 'Initial wtkpro context', category: 'context', isNewProject: true },
-  ]);
+  const [commits, setCommits] = useState<CommitLog[]>([]);
+
+  useEffect(() => {
+    const fetchCommits = async () => {
+      const { data, error } = await supabase
+        .from('commits')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (data && !error) {
+        setCommits(data.map(d => ({
+          id: d.id,
+          project: d.project_id,
+          time: new Date(d.created_at).toLocaleString(),
+          content: d.content,
+          category: d.category,
+          isNewProject: d.is_new_project
+        })));
+      }
+    };
+    fetchCommits();
+  }, []);
+
+  // Derive projects dynamically from commits
+  const projectsMap = new Map<string, Set<string>>();
+  commits.forEach(c => {
+    if (!projectsMap.has(c.project)) {
+      projectsMap.set(c.project, new Set());
+    }
+    projectsMap.get(c.project)?.add(c.category);
+  });
 
   const processInputSequence = async (content: string, filename: string = '') => {
     setIsModalOpen(true);
@@ -142,9 +169,21 @@ export default function Home() {
   const handleCommit = async () => {
     if (commitId && metadata) {
       setIsSuccess(true);
+      
+      const newDbCommit = {
+        id: commitId,
+        project_id: metadata.projectId,
+        category: metadata.fileCategory,
+        content: inputText,
+        is_new_project: metadata.isNewProject,
+      };
+
+      // Save to Supabase
+      await supabase.from('commits').insert([newDbCommit]);
+
       await new Promise(r => setTimeout(r, 1000)); // Auto-close delay
       
-      const newCommit: CommitLog = {
+      const newCommitLog: CommitLog = {
         id: commitId,
         project: metadata.projectId,
         time: 'Just now',
@@ -153,7 +192,7 @@ export default function Home() {
         isNewProject: metadata.isNewProject,
       };
 
-      setCommits([newCommit, ...commits]);
+      setCommits([newCommitLog, ...commits]);
       setInputText('');
       setMetadata(null);
       setCommitId(null);
@@ -219,25 +258,27 @@ export default function Home() {
               <span className="text-base">📁</span> PROJECT NODES
             </h2>
             <ul className="space-y-4 font-mono text-sm pl-6 border-l border-console-border ml-2">
-              <li>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-console-text-muted">├─</span> 🌐 wtkpro
-                </div>
-                <ul className="space-y-2 pl-6 border-l border-console-border ml-2 text-console-text-muted">
-                  <li className="hover:text-console-text-main cursor-pointer transition-ui">├─ context.md</li>
-                  <li className="hover:text-console-text-main cursor-pointer transition-ui">├─ design.md</li>
-                  <li className="hover:text-console-text-main cursor-pointer transition-ui">└─ history.md</li>
-                </ul>
-              </li>
-              <li>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-console-text-muted">└─</span> 🌐 tradeconvert
-                </div>
-                <ul className="space-y-2 pl-6 border-l border-console-border ml-2 text-console-text-muted">
-                  <li className="hover:text-console-text-main cursor-pointer transition-ui">├─ context.md</li>
-                  <li className="hover:text-console-text-main cursor-pointer transition-ui">└─ design.md</li>
-                </ul>
-              </li>
+              {projectsMap.size === 0 && (
+                 <div className="text-console-text-muted italic text-xs">No project nodes detected in database.</div>
+              )}
+              {Array.from(projectsMap.entries()).map(([project, categories], idx) => (
+                <li key={idx}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-console-text-muted">
+                      {idx === projectsMap.size - 1 ? '└─' : '├─'}
+                    </span> 🌐 {project}
+                  </div>
+                  <ul className="space-y-2 pl-6 border-l border-console-border ml-2 text-console-text-muted">
+                    {Array.from(categories).map((cat, catIdx) => (
+                      <li key={catIdx} className="hover:text-console-text-main cursor-pointer transition-ui flex items-center gap-2">
+                        <span className="text-console-text-muted">
+                           {catIdx === categories.size - 1 ? '└─' : '├─'}
+                        </span> {cat}.md
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
             </ul>
           </div>
         </aside>
@@ -273,7 +314,7 @@ export default function Home() {
             <span className="text-base">🎫</span> RECENT COMMITS
           </h2>
           
-          <div className="space-y-0 relative before:absolute before:inset-y-0 before:left-[11px] before:w-px before:bg-console-border">
+          <div className="space-y-0 relative before:absolute before:inset-y-0 before:left-[11px] before:w-px before:bg-console-border h-[calc(100vh-150px)] overflow-y-auto">
             {commits.map((commit, idx) => (
               <button 
                 key={idx} 
