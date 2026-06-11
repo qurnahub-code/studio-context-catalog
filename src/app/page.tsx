@@ -361,10 +361,10 @@ export default function Home() {
       </header>
 
       {/* Main Grid */}
-      <main className="grid grid-cols-1 lg:grid-cols-12 gap-px bg-console-border min-h-[calc(100vh-65px)] relative">
+      <main className="grid grid-cols-1 lg:grid-cols-12 gap-px bg-console-border h-[calc(100vh-73px)] overflow-hidden relative">
         
         {/* Left Panel: Infrastructure & Projects */}
-        <aside className="lg:col-span-4 bg-console-bg p-6 flex flex-col gap-8">
+        <aside className="lg:col-span-4 bg-console-bg p-6 flex flex-col gap-8 overflow-y-auto">
           <div>
             <h2 className="text-xs font-bold text-console-text-muted mb-4 tracking-widest flex items-center gap-2">
               <span className="text-base">📁</span> INFRASTRUCTURE
@@ -446,7 +446,7 @@ export default function Home() {
         </aside>
 
         {/* Center Panel: Ingestion Workspace */}
-        <section className="lg:col-span-4 bg-console-bg p-6 flex flex-col gap-6">
+        <section className="lg:col-span-4 bg-console-bg p-6 flex flex-col gap-6 overflow-y-auto">
           <h2 className="text-xs font-bold text-console-text-muted tracking-widest flex items-center gap-2 mb-2">
             <span className="text-base">🎛️</span> INGESTION WORKSPACE
           </h2>
@@ -471,7 +471,7 @@ export default function Home() {
         </section>
 
         {/* Right Panel: Commits */}
-        <aside className="lg:col-span-4 bg-console-bg p-6">
+        <aside className="lg:col-span-4 bg-console-bg p-6 flex flex-col overflow-y-auto">
           <h2 className="text-xs font-bold text-console-text-muted mb-6 tracking-widest flex items-center gap-2">
             <span className="text-base">🎫</span> RECENT COMMITS
           </h2>
