@@ -34,13 +34,15 @@ body {
 }
 
 /* Base button and interactive element styles based on Emil Kowalski's principles */
-button, .interactive {
+button, .interactive, a {
+  cursor: pointer;
   transition: transform 160ms var(--ease-out), filter 200ms ease, opacity 200ms ease, background-color 160ms ease;
   transform-origin: center;
 }
 
-button:active, .interactive:active {
-  transform: scale(0.97);
+button:active, .interactive:active, a:active {
+  transform: scale(0.96);
+  filter: brightness(0.9);
 }
 
 button.transitioning, .interactive.transitioning {
