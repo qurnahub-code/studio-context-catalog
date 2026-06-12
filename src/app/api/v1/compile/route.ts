@@ -4,22 +4,29 @@ export async function POST(req: Request) {
   try {
     const { files, targetModel } = await req.json();
 
-    let systemPrompt = '';
+    let compiled = '';
     
-    // Switch styling conventions depending on what the AI reads best
     if (targetModel === 'cursor') {
-      systemPrompt = `You are an expert .cursorrules builder. Turn this context into clean rules:\n`;
+      compiled += `# ContextFlow Generated Context for Cursor\n`;
+      compiled += `# Target File: .cursorrules\n\n`;
+      compiled += `## Global Rules\n- You are an expert developer.\n- Always output clean, maintainable code.\n- Refer to the context below for project-specific constraints.\n\n`;
     } else if (targetModel === 'claude') {
-      systemPrompt = `Format this strictly as a CLAUDE.md guide emphasizing operations and project constraints:\n`;
+      compiled += `# ContextFlow Generated Context for Claude Code\n`;
+      compiled += `# Target File: CLAUDE.md\n\n`;
+      compiled += `## Build & Test Commands\n\`\`\`bash\nnpm run dev\nnpm run build\nnpm run test\n\`\`\`\n\n`;
+      compiled += `## Project Guidelines\n- Follow strict typings.\n- Use modern React patterns.\n\n`;
     } else {
-      systemPrompt = `Generate a high-level system overview context document:\n`;
+      compiled += `# ContextFlow Generated Context for GitHub Copilot\n`;
+      compiled += `# Target File: .github/copilot-instructions.md\n\n`;
+      compiled += `## High-level Overview\n- This repository relies on ContextFlow for architecture mapping.\n\n`;
     }
 
-    // Process files into the formatted layout
-    const formattedContext = files.map((f: any) => `### Content: ${f.file_path}\n${f.content}`).join('\n\n');
-    const finalFileString = `${systemPrompt}\n${formattedContext}`;
+    compiled += `## Project System Context\n`;
+    files.forEach((f: any) => {
+      compiled += `\n### File: ${f.file_path}\n${f.content}\n`;
+    });
 
-    return NextResponse.json({ success: true, fileContent: finalFileString });
+    return NextResponse.json({ success: true, fileContent: compiled });
   } catch (error) {
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
   }
