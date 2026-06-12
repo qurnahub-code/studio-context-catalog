@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Sparkles, Download, Layers, CheckCircle, Settings, RefreshCw } from 'lucide-react';
-import SettingsModal from './SettingsModal';
+import React, { useState } from 'react';
+import { Sparkles, Layers, CheckCircle } from 'lucide-react';
 
 // Define target structures for different models
 const MODEL_PRESETS = {
@@ -14,21 +13,10 @@ interface CommitFile {
   content: string;
 }
 
-export default function ContextWidget({ files, projectName }: { files: CommitFile[], projectName: string }) {
+export default function ContextWidget({ files, projectName, onCompiledSubmit }: { files: CommitFile[], projectName: string, onCompiledSubmit?: (content: string, filename: string) => void }) {
   const [selectedModel, setSelectedModel] = useState<keyof typeof MODEL_PRESETS>('cursor');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<string | null>(null);
-
-  // Settings Modal State
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [hasGithubConfig, setHasGithubConfig] = useState(false);
-
-  // Check config on mount and when modal closes
-  useEffect(() => {
-    const repo = localStorage.getItem(`ctx_repo_${projectName}`);
-    const token = localStorage.getItem(`ctx_token_${projectName}`);
-    setHasGithubConfig(!!(repo && token));
-  }, [projectName, isSettingsOpen]);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -44,6 +32,9 @@ export default function ContextWidget({ files, projectName }: { files: CommitFil
       
       if (data.success) {
         setGeneratedContent(data.fileContent);
+        if (onCompiledSubmit) {
+          onCompiledSubmit(data.fileContent, MODEL_PRESETS[selectedModel].targetFile);
+        }
       } else {
         alert('Failed to compile context.');
       }
@@ -69,25 +60,10 @@ export default function ContextWidget({ files, projectName }: { files: CommitFil
       <div className="flex items-center gap-3 mb-2">
         <Sparkles className="text-console-accent-cyan w-5 h-5 animate-pulse" />
         <h3 className="text-sm font-bold tracking-widest uppercase font-mono text-console-accent-cyan">Context Engine Assembler</h3>
-        <div className="ml-auto flex items-center gap-2">
-          <span className="bg-console-border px-2 py-0.5 rounded text-[10px] text-console-text-muted font-mono uppercase">
-            Target: {projectName}
-          </span>
-          <button 
-            onClick={() => setIsSettingsOpen(true)}
-            className="p-1.5 rounded bg-console-panel border border-console-border text-console-text-muted hover:text-console-accent-cyan hover:border-console-accent-cyan transition-all"
-            title="Project Settings (GitHub Sync)"
-          >
-            <Settings className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <span className="ml-auto bg-console-border px-2 py-0.5 rounded text-[10px] text-console-text-muted font-mono uppercase">
+          Target: {projectName}
+        </span>
       </div>
-      
-      <SettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-        projectId={projectName} 
-      />
       
       <p className="text-xs text-console-text-muted mb-6 font-mono leading-relaxed">
         Compile your organizational memory records into a single targeted rule file optimized for your AI agent.
@@ -136,37 +112,20 @@ export default function ContextWidget({ files, projectName }: { files: CommitFil
         >
           {isGenerating ? (
             <div className="w-4 h-4 border-2 border-console-bg/30 border-t-console-bg rounded-full animate-spin" />
-          ) : '[ Compile Target Context ]'}
+          ) : '[ Compile & Commit to Engine ]'}
         </button>
       ) : (
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-console-git-add text-xs font-mono bg-console-git-add/10 p-3 border border-console-git-add/30 rounded">
+          <div className="flex items-center justify-center gap-2 text-console-git-add text-xs font-mono bg-console-git-add/10 p-3 border border-console-git-add/30 rounded">
             <CheckCircle className="w-4 h-4 shrink-0" />
-            <span>Built {MODEL_PRESETS[selectedModel].targetFile}!</span>
+            <span>Successfully committed {MODEL_PRESETS[selectedModel].targetFile} to ContextFlow!</span>
           </div>
           <button
-            onClick={() => {
-              const blob = new Blob([generatedContent], { type: 'text/markdown' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = MODEL_PRESETS[selectedModel].targetFile;
-              a.click();
-            }}
+            onClick={() => setGeneratedContent(null)}
             className="interactive w-full bg-transparent hover:bg-console-panel text-console-text-main font-mono text-xs rounded py-3 transition flex items-center justify-center gap-2 border border-console-border hover:border-console-text-muted"
           >
-            <Download className="w-4 h-4" />
-            [ Download Configuration ]
+            [ Dismiss ]
           </button>
-
-          <div className="mt-4 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest p-3 rounded border border-console-border bg-console-panel">
-            <span className="text-console-text-muted">Auto-Sync Status:</span>
-            {hasGithubConfig ? (
-              <span className="text-console-git-add flex items-center gap-1.5"><RefreshCw className="w-3 h-3" /> ENABLED</span>
-            ) : (
-              <span className="text-console-git-remove flex items-center gap-1.5"><CheckCircle className="w-3 h-3" /> DISABLED</span>
-            )}
-          </div>
         </div>
       )}
     </div>

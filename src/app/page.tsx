@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import ContextWidget from '@/components/ContextWidget';
-import { triggerAutoSync } from '@/lib/github-sync';
 
 export interface IngestionMetadata {
   projectId: string;
@@ -278,9 +277,6 @@ export default function Home() {
       };
 
       setCommits(prev => [newCommitLog, ...prev]);
-      
-      // Auto-Sync background check
-      triggerAutoSync(metadata.projectId);
 
       if (fileQueue.length > 0) {
         const nextFile = fileQueue[0];
@@ -469,6 +465,31 @@ export default function Home() {
           <ContextWidget 
             files={compilationFiles} 
             projectName={selectedCompilationProject || 'NONE'} 
+            onCompiledSubmit={async (content, filename) => {
+              if (!selectedCompilationProject) return;
+              const hash = await generateCommitId(content, Date.now());
+              
+              const newDbCommit = {
+                id: hash,
+                project_id: selectedCompilationProject,
+                category: filename.replace('.md', ''),
+                content: content,
+                is_new_project: false,
+              };
+
+              await supabase.from('commits').insert([newDbCommit]);
+
+              const newCommitLog = {
+                id: hash,
+                project: selectedCompilationProject,
+                time: 'Just now',
+                content: content,
+                category: filename.replace('.md', ''),
+                isNewProject: false,
+              };
+
+              setCommits(prev => [newCommitLog, ...prev]);
+            }}
           />
 
           <h2 className="text-xs font-bold text-console-text-muted tracking-widest flex items-center gap-2 mb-2 mt-4 pt-6 border-t border-console-border">
@@ -912,9 +933,6 @@ export default function Home() {
                       };
                       setCommits(prev => [newCommitLog, ...prev]);
                       setEditingNode(null);
-                      
-                      // Auto-Sync background check
-                      triggerAutoSync(editingNode.project);
                     }}
                     className="interactive bg-console-accent-cyan text-console-bg px-6 py-2 rounded font-bold uppercase tracking-widest text-xs hover:opacity-90 shadow-[0_0_15px_rgba(56,189,248,0.2)]"
                   >
