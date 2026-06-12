@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import ContextWidget from '@/components/ContextWidget';
 
 export interface IngestionMetadata {
   projectId: string;
@@ -112,7 +113,17 @@ export default function Home() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Compilation State
+  const [selectedCompilationProject, setSelectedCompilationProject] = useState<string | null>(null);
+
   const [commits, setCommits] = useState<CommitLog[]>([]);
+
+  const compilationFiles = selectedCompilationProject 
+    ? commits.filter(c => c.project === selectedCompilationProject).map(c => ({
+        file_path: `${c.category}.md`,
+        content: c.content
+      }))
+    : [];
 
   useEffect(() => {
     const fetchCommits = async () => {
@@ -395,7 +406,10 @@ export default function Home() {
               )}
               {Array.from(projectsMap.entries()).map(([project, categories], idx) => (
                 <li key={idx}>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div 
+                    className={`group flex items-center gap-2 mb-2 cursor-pointer transition-ui rounded px-2 py-1.5 -ml-2 ${selectedCompilationProject === project ? 'bg-console-panel border border-console-border' : 'hover:bg-console-panel/50 border border-transparent'}`}
+                    onClick={() => setSelectedCompilationProject(project)}
+                  >
                     <span className="text-console-text-muted">
                       {idx === projectsMap.size - 1 ? '└─' : '├─'}
                     </span> 🌐 {project}
@@ -445,9 +459,15 @@ export default function Home() {
           </div>
         </aside>
 
-        {/* Center Panel: Ingestion Workspace */}
+        {/* Center Panel: Ingestion & Assembly Workspace */}
         <section className="lg:col-span-4 bg-console-bg p-6 flex flex-col gap-6 lg:overflow-y-auto">
-          <h2 className="text-xs font-bold text-console-text-muted tracking-widest flex items-center gap-2 mb-2">
+          
+          <ContextWidget 
+            files={compilationFiles} 
+            projectName={selectedCompilationProject || 'NONE'} 
+          />
+
+          <h2 className="text-xs font-bold text-console-text-muted tracking-widest flex items-center gap-2 mb-2 mt-4 pt-6 border-t border-console-border">
             <span className="text-base">🎛️</span> INGESTION WORKSPACE
           </h2>
 
