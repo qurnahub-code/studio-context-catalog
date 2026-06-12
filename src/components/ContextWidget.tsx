@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Download, Layers, CheckCircle } from 'lucide-react';
+import { Sparkles, Download, Layers, CheckCircle, Settings, RefreshCw } from 'lucide-react';
+import SettingsModal from './SettingsModal';
 
 // Define target structures for different models
 const MODEL_PRESETS = {
@@ -18,57 +19,16 @@ export default function ContextWidget({ files, projectName }: { files: CommitFil
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<string | null>(null);
 
-  // GitHub Sync State
-  const [githubRepo, setGithubRepo] = useState('');
-  const [githubToken, setGithubToken] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  // Settings Modal State
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [hasGithubConfig, setHasGithubConfig] = useState(false);
 
+  // Check config on mount and when modal closes
   useEffect(() => {
-    const savedRepo = localStorage.getItem('ctx_githubRepo');
-    const savedToken = localStorage.getItem('ctx_githubToken');
-    if (savedRepo) setGithubRepo(savedRepo);
-    if (savedToken) setGithubToken(savedToken);
-  }, []);
-
-  const handleSaveGithubSettings = (repo: string, token: string) => {
-    setGithubRepo(repo);
-    setGithubToken(token);
-    localStorage.setItem('ctx_githubRepo', repo);
-    localStorage.setItem('ctx_githubToken', token);
-  };
-
-  const handleSync = async () => {
-    if (!githubRepo || !githubToken || !generatedContent) return;
-    setIsSyncing(true);
-    setSyncStatus('idle');
-
-    try {
-      const response = await fetch('/api/v1/github/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          repo: githubRepo,
-          path: MODEL_PRESETS[selectedModel].targetFile,
-          content: generatedContent,
-          token: githubToken
-        })
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setSyncStatus('success');
-      } else {
-        alert(data.error || 'Failed to sync');
-        setSyncStatus('error');
-      }
-    } catch (e) {
-      alert('Error during GitHub sync');
-      setSyncStatus('error');
-    }
-    
-    setIsSyncing(false);
-  };
+    const repo = localStorage.getItem(`ctx_repo_${projectName}`);
+    const token = localStorage.getItem(`ctx_token_${projectName}`);
+    setHasGithubConfig(!!(repo && token));
+  }, [projectName, isSettingsOpen]);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -109,10 +69,25 @@ export default function ContextWidget({ files, projectName }: { files: CommitFil
       <div className="flex items-center gap-3 mb-2">
         <Sparkles className="text-console-accent-cyan w-5 h-5 animate-pulse" />
         <h3 className="text-sm font-bold tracking-widest uppercase font-mono text-console-accent-cyan">Context Engine Assembler</h3>
-        <span className="ml-auto bg-console-border px-2 py-0.5 rounded text-[10px] text-console-text-muted font-mono uppercase">
-          Target: {projectName}
-        </span>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="bg-console-border px-2 py-0.5 rounded text-[10px] text-console-text-muted font-mono uppercase">
+            Target: {projectName}
+          </span>
+          <button 
+            onClick={() => setIsSettingsOpen(true)}
+            className="p-1.5 rounded bg-console-panel border border-console-border text-console-text-muted hover:text-console-accent-cyan hover:border-console-accent-cyan transition-all"
+            title="Project Settings (GitHub Sync)"
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
+      
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+        projectId={projectName} 
+      />
       
       <p className="text-xs text-console-text-muted mb-6 font-mono leading-relaxed">
         Compile your organizational memory records into a single targeted rule file optimized for your AI agent.
@@ -184,43 +159,13 @@ export default function ContextWidget({ files, projectName }: { files: CommitFil
             [ Download Configuration ]
           </button>
 
-          <div className="mt-6 pt-4 border-t border-console-border">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-console-text-muted flex items-center gap-2 mb-3">
-              <span>GitHub CI/CD Sync</span>
-              <div className="flex-1 h-px bg-console-border" />
-            </label>
-            
-            <div className="space-y-3 mb-4">
-              <input 
-                type="text" 
-                placeholder="Repository (e.g. owner/repo)" 
-                value={githubRepo}
-                onChange={(e) => handleSaveGithubSettings(e.target.value, githubToken)}
-                className="w-full bg-console-panel border border-console-border rounded px-3 py-2 text-xs text-console-text-main focus:outline-none focus:border-console-accent-cyan transition-ui"
-              />
-              <input 
-                type="password" 
-                placeholder="Personal Access Token (PAT)" 
-                value={githubToken}
-                onChange={(e) => handleSaveGithubSettings(githubRepo, e.target.value)}
-                className="w-full bg-console-panel border border-console-border rounded px-3 py-2 text-xs text-console-text-main focus:outline-none focus:border-console-accent-cyan transition-ui"
-              />
-            </div>
-
-            <button
-              onClick={handleSync}
-              disabled={isSyncing || !githubRepo || !githubToken}
-              className="interactive w-full bg-console-text-main text-console-bg font-bold uppercase tracking-widest text-xs rounded py-3 transition flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSyncing ? (
-                <div className="w-4 h-4 border-2 border-console-bg/30 border-t-console-bg rounded-full animate-spin" />
-              ) : (
-                <>
-                  <span className="text-base">🐙</span>
-                  {syncStatus === 'success' ? '[ Synced Successfully! ]' : '[ Push to GitHub ]'}
-                </>
-              )}
-            </button>
+          <div className="mt-4 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest p-3 rounded border border-console-border bg-console-panel">
+            <span className="text-console-text-muted">Auto-Sync Status:</span>
+            {hasGithubConfig ? (
+              <span className="text-console-git-add flex items-center gap-1.5"><RefreshCw className="w-3 h-3" /> ENABLED</span>
+            ) : (
+              <span className="text-console-git-remove flex items-center gap-1.5"><CheckCircle className="w-3 h-3" /> DISABLED</span>
+            )}
           </div>
         </div>
       )}

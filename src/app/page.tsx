@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import ContextWidget from '@/components/ContextWidget';
+import { triggerAutoSync } from '@/lib/github-sync';
 
 export interface IngestionMetadata {
   projectId: string;
@@ -277,6 +278,9 @@ export default function Home() {
       };
 
       setCommits(prev => [newCommitLog, ...prev]);
+      
+      // Auto-Sync background check
+      triggerAutoSync(metadata.projectId);
 
       if (fileQueue.length > 0) {
         const nextFile = fileQueue[0];
@@ -908,6 +912,9 @@ export default function Home() {
                       };
                       setCommits(prev => [newCommitLog, ...prev]);
                       setEditingNode(null);
+                      
+                      // Auto-Sync background check
+                      triggerAutoSync(editingNode.project);
                     }}
                     className="interactive bg-console-accent-cyan text-console-bg px-6 py-2 rounded font-bold uppercase tracking-widest text-xs hover:opacity-90 shadow-[0_0_15px_rgba(56,189,248,0.2)]"
                   >
