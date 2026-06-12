@@ -59,6 +59,50 @@ mcpServer.tool(
   }
 );
 
+mcpServer.prompt(
+  "evaluate_drift",
+  "Evaluate local codebase changes against ContextFlow rules",
+  { project_id: z.string() },
+  async ({ project_id }) => {
+    const { data, error } = await supabase
+      .from('commits')
+      .select('category, content')
+      .eq('project_id', project_id)
+      .order('created_at', { ascending: false });
+
+    if (error || !data || data.length === 0) {
+      return { messages: [{ role: "user", content: { type: "text", text: `No context found for project: ${project_id}` } }] };
+    }
+
+    // Deduplicate by category, keeping only the most recent commit for each
+    const latestCommits = new Map<string, string>();
+    for (const commit of data) {
+      if (!latestCommits.has(commit.category)) {
+        latestCommits.set(commit.category, commit.content);
+      }
+    }
+
+    let compiled = `# ContextFlow Architectural Rules for [${project_id}]\n\n`;
+    for (const [category, content] of latestCommits.entries()) {
+      if (content !== '[DELETED]') {
+        compiled += `## [${category.toUpperCase()}]\n${content}\n\n`;
+      }
+    }
+
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Please act as a strict Context Drift Inspector.\n\nYour job is to review my current working files or uncommitted changes and evaluate them against the following architectural constraints defined in ContextFlow.\n\nIf you detect any deviations from these rules (e.g., incorrect styling patterns, forbidden imports, improper component structures), point them out clearly as "Drift Detected".\n\nHere are the active rules:\n\n${compiled}`
+          }
+        }
+      ]
+    };
+  }
+);
+
 // Transport Abstraction for Next.js App Router
 export class AppRouterSSETransport {
   onmessage?: (message: JSONRPCMessage) => void;
