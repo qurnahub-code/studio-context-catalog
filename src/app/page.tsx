@@ -114,7 +114,7 @@ export default function Home() {
   };
 
   // Compilation State
-  const [selectedCompilationProject, setSelectedCompilationProject] = useState<string | null>(null);
+  const [selectedCompilationProjects, setSelectedCompilationProjects] = useState<Set<string>>(new Set());
 
   const [commits, setCommits] = useState<CommitLog[]>([]);
 
@@ -132,14 +132,26 @@ export default function Home() {
     }
   });
 
-  const compilationFiles = selectedCompilationProject 
+  const compilationFiles = selectedCompilationProjects.size > 0 
     ? Array.from(latestCommitsMap.values())
-        .filter(c => c.project === selectedCompilationProject && !EXCLUDED_CATEGORIES.has(c.category) && c.content !== '[DELETED]')
+        .filter(c => selectedCompilationProjects.has(c.project) && !EXCLUDED_CATEGORIES.has(c.category) && c.content !== '[DELETED]')
         .map(c => ({
-          file_path: `${c.category}.md`,
+          file_path: `${c.project}/${c.category}.md`,
           content: c.content
         }))
     : [];
+
+  const handleToggleProjectSelection = (project: string) => {
+    setSelectedCompilationProjects(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(project)) {
+        newSet.delete(project);
+      } else {
+        newSet.add(project);
+      }
+      return newSet;
+    });
+  };
 
   useEffect(() => {
     const fetchCommits = async () => {
@@ -473,12 +485,12 @@ Add ContextFlow to your AI agent's MCP servers. In your editor, type \`/evaluate
               {Array.from(projectsMap.entries()).map(([project, categories], idx) => (
                 <li key={idx}>
                   <div 
-                    className={`group flex items-center gap-2 mb-2 cursor-pointer transition-ui rounded px-2 py-1.5 -ml-2 ${selectedCompilationProject === project ? 'bg-console-panel border border-console-border' : 'hover:bg-console-panel/50 border border-transparent'}`}
-                    onClick={() => setSelectedCompilationProject(project)}
+                    className={`group flex items-center gap-2 mb-2 cursor-pointer transition-ui rounded px-2 py-1.5 -ml-2 ${selectedCompilationProjects.has(project) ? 'bg-console-panel border border-console-accent-cyan/50 text-console-accent-cyan' : 'hover:bg-console-panel/50 border border-transparent'}`}
+                    onClick={() => handleToggleProjectSelection(project)}
                   >
-                    <span className="text-console-text-muted">
-                      {idx === projectsMap.size - 1 ? '└─' : '├─'}
-                    </span> 🌐 {project}
+                    <span className="text-console-text-muted group-hover:text-console-accent-cyan/70">
+                      {selectedCompilationProjects.has(project) ? '☑' : '☐'}
+                    </span> 🌐 <span className="font-bold">{project}</span>
                     <span className="ml-auto bg-console-border text-console-text-muted px-1.5 py-0.5 rounded text-[10px]">
                       {categories.size} nodes
                     </span>
@@ -541,14 +553,16 @@ Add ContextFlow to your AI agent's MCP servers. In your editor, type \`/evaluate
           
           <ContextWidget 
             files={compilationFiles} 
-            projectName={selectedCompilationProject || 'NONE'} 
-            onCompiledSubmit={async (content, filename) => {
-              if (!selectedCompilationProject) return;
+            projectName={selectedCompilationProjects.size > 0 ? Array.from(selectedCompilationProjects).join(', ') : 'NONE'} 
+            onCompiledSubmit={async (content, filename, destinationProject) => {
+              if (selectedCompilationProjects.size === 0) return;
               const hash = await generateCommitId(content, Date.now());
               
+              const targetProject = destinationProject || Array.from(selectedCompilationProjects)[0];
+
               const newDbCommit = {
                 id: hash,
-                project_id: selectedCompilationProject,
+                project_id: targetProject,
                 category: filename.replace('.md', ''),
                 content: content,
                 is_new_project: false,
@@ -558,7 +572,7 @@ Add ContextFlow to your AI agent's MCP servers. In your editor, type \`/evaluate
 
               const newCommitLog = {
                 id: hash,
-                project: selectedCompilationProject,
+                project: targetProject,
                 time: 'Just now',
                 content: content,
                 category: filename.replace('.md', ''),

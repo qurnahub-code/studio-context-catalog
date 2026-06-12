@@ -17,10 +17,11 @@ interface CommitFile {
   content: string;
 }
 
-export default function ContextWidget({ files, projectName, onCompiledSubmit }: { files: CommitFile[], projectName: string, onCompiledSubmit?: (content: string, filename: string) => void }) {
+export default function ContextWidget({ files, projectName, onCompiledSubmit }: { files: CommitFile[], projectName: string, onCompiledSubmit?: (content: string, filename: string, destinationProject: string) => void }) {
   const [selectedModel, setSelectedModel] = useState<keyof typeof MODEL_PRESETS>('cursor');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<string | null>(null);
+  const [destinationProject, setDestinationProject] = useState('');
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -37,7 +38,7 @@ export default function ContextWidget({ files, projectName, onCompiledSubmit }: 
       if (data.success) {
         setGeneratedContent(data.fileContent);
         if (onCompiledSubmit) {
-          onCompiledSubmit(data.fileContent, MODEL_PRESETS[selectedModel].targetFile);
+          onCompiledSubmit(data.fileContent, MODEL_PRESETS[selectedModel].targetFile, destinationProject.trim());
         }
       } else {
         alert('Failed to compile context.');
@@ -105,6 +106,22 @@ export default function ContextWidget({ files, projectName, onCompiledSubmit }: 
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Destination Project Selector */}
+      <div className="space-y-2 mb-6">
+        <label className="text-[10px] font-bold uppercase tracking-widest text-console-text-muted flex items-center gap-2">
+          <span>Destination Project ID</span>
+          <div className="flex-1 h-px bg-console-border" />
+        </label>
+        <input 
+          type="text"
+          value={destinationProject}
+          onChange={(e) => setDestinationProject(e.target.value)}
+          placeholder={projectName.split(',')[0]}
+          className="w-full bg-console-panel border border-console-border rounded px-3 py-2.5 text-sm text-console-text-main focus:outline-none focus:border-console-accent-cyan transition-ui"
+        />
+        <p className="text-[11px] text-console-text-muted italic px-1">Where should the new commit be saved in ContextFlow?</p>
       </div>
 
       {/* Action CTA */}
