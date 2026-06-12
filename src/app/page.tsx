@@ -179,6 +179,20 @@ export default function Home() {
       content = `# GLOBAL STUDIO RULES\n\n1. All commits must be immutable.\n2. Design components must follow Emil Kowalski's animation principles.\n3. Keep the UI as a precision technical console.`;
     } else if (filename === 'system-tokens.md') {
       content = `# SYSTEM TOKENS\n\n- Primary: #38bdf8 (Cyan)\n- Background: #020617 (Slate 950)\n- Border: #1e293b (Slate 800)\n- Success: #10b981 (Emerald)\n- Danger: #ef4444 (Red)`;
+    } else if (filename === 'usage-guide.md') {
+      content = `# CONTEXTFLOW USAGE GUIDE
+
+## 1. Creating Context Nodes
+Drag & Drop markdown files into the central Ingestion Workspace, or paste raw text. The system will automatically chunk it into isolated architecture nodes (e.g., \`design.md\`, \`auth.md\`).
+
+## 2. Compiling the Engine
+Click any project in the "PROJECT NODES" tree. The central panel will populate with the Context Engine Assembler. Select your target AI (Cursor, Claude Code, etc.) and hit Compile to build the final artifact.
+
+## 3. Drift Enforcement (Webhooks)
+When Pull Requests are opened on GitHub, ContextFlow evaluates the diff against your rules. Any deviation will block the PR and post an automated comment.
+
+## 4. Active Drift Monitor (MCP)
+Add ContextFlow to your AI agent's MCP servers. In your editor, type \`/evaluate_drift\` to have your agent scan your local uncommitted code for deviations from the architecture rules.`;
     }
     setInspectedFile({ name: `Infrastructure / ${filename}`, content });
   };
@@ -410,6 +424,12 @@ export default function Home() {
           <h1 className="font-bold tracking-wider">SUFYAN STUDIO ENGINE</h1>
         </div>
         <div className="flex items-center gap-6 font-mono text-sm text-console-text-muted">
+          <button 
+            onClick={() => handleOpenInfrastructure('usage-guide.md')}
+            className="interactive flex items-center gap-2 hover:text-console-text-main transition-ui"
+          >
+            <span>📚</span> USAGE GUIDE
+          </button>
           <div className="flex items-center gap-2">
             STATUS: ACTIVE <span className="text-console-git-add animate-pulse">●</span>
           </div>
