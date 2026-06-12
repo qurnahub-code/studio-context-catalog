@@ -5,7 +5,11 @@ import { Sparkles, Layers, CheckCircle } from 'lucide-react';
 const MODEL_PRESETS = {
   cursor: { name: 'Cursor (.cursorrules)', targetFile: '.cursorrules', desc: 'Optimized for MDC rules and inline chat context.' },
   claude: { name: 'Claude Code (CLAUDE.md)', targetFile: 'CLAUDE.md', desc: 'Focuses on test commands, build commands, and strict styles.' },
-  copilot: { name: 'GitHub Copilot', targetFile: '.github/copilot-instructions.md', desc: 'Optimized for high-level repository architecture mapping.' }
+  copilot: { name: 'GitHub Copilot', targetFile: '.github/copilot-instructions.md', desc: 'Optimized for high-level repository architecture mapping.' },
+  windsurf: { name: 'Windsurf (.windsurfrules)', targetFile: '.windsurfrules', desc: 'Codeium-optimized rules for contextual awareness.' },
+  cline: { name: 'Cline (.clinerules)', targetFile: '.clinerules', desc: 'Autonomous agent rules for Cline.' },
+  roo: { name: 'Roo Code (.roomodes)', targetFile: '.roomodes', desc: 'Role-based instructions for Roo Code.' },
+  generic: { name: 'Generic System Prompt', targetFile: 'SYSTEM_PROMPT.md', desc: 'Standard markdown format for any LLM.' }
 };
 
 interface CommitFile {

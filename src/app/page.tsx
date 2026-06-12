@@ -118,11 +118,18 @@ export default function Home() {
 
   const [commits, setCommits] = useState<CommitLog[]>([]);
 
+  const EXCLUDED_CATEGORIES = new Set([
+    '.cursorrules', 'CLAUDE', '.github/copilot-instructions', 
+    '.windsurfrules', '.clinerules', '.roomodes', 'SYSTEM_PROMPT'
+  ]);
+
   const compilationFiles = selectedCompilationProject 
-    ? commits.filter(c => c.project === selectedCompilationProject).map(c => ({
-        file_path: `${c.category}.md`,
-        content: c.content
-      }))
+    ? commits
+        .filter(c => c.project === selectedCompilationProject && !EXCLUDED_CATEGORIES.has(c.category))
+        .map(c => ({
+          file_path: `${c.category}.md`,
+          content: c.content
+        }))
     : [];
 
   useEffect(() => {
