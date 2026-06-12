@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, Download, Layers, CheckCircle } from 'lucide-react';
 
 // Define target structures for different models
@@ -17,6 +17,58 @@ export default function ContextWidget({ files, projectName }: { files: CommitFil
   const [selectedModel, setSelectedModel] = useState<keyof typeof MODEL_PRESETS>('cursor');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<string | null>(null);
+
+  // GitHub Sync State
+  const [githubRepo, setGithubRepo] = useState('');
+  const [githubToken, setGithubToken] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  useEffect(() => {
+    const savedRepo = localStorage.getItem('ctx_githubRepo');
+    const savedToken = localStorage.getItem('ctx_githubToken');
+    if (savedRepo) setGithubRepo(savedRepo);
+    if (savedToken) setGithubToken(savedToken);
+  }, []);
+
+  const handleSaveGithubSettings = (repo: string, token: string) => {
+    setGithubRepo(repo);
+    setGithubToken(token);
+    localStorage.setItem('ctx_githubRepo', repo);
+    localStorage.setItem('ctx_githubToken', token);
+  };
+
+  const handleSync = async () => {
+    if (!githubRepo || !githubToken || !generatedContent) return;
+    setIsSyncing(true);
+    setSyncStatus('idle');
+
+    try {
+      const response = await fetch('/api/v1/github/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repo: githubRepo,
+          path: MODEL_PRESETS[selectedModel].targetFile,
+          content: generatedContent,
+          token: githubToken
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setSyncStatus('success');
+      } else {
+        alert(data.error || 'Failed to sync');
+        setSyncStatus('error');
+      }
+    } catch (e) {
+      alert('Error during GitHub sync');
+      setSyncStatus('error');
+    }
+    
+    setIsSyncing(false);
+  };
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -131,6 +183,45 @@ export default function ContextWidget({ files, projectName }: { files: CommitFil
             <Download className="w-4 h-4" />
             [ Download Configuration ]
           </button>
+
+          <div className="mt-6 pt-4 border-t border-console-border">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-console-text-muted flex items-center gap-2 mb-3">
+              <span>GitHub CI/CD Sync</span>
+              <div className="flex-1 h-px bg-console-border" />
+            </label>
+            
+            <div className="space-y-3 mb-4">
+              <input 
+                type="text" 
+                placeholder="Repository (e.g. owner/repo)" 
+                value={githubRepo}
+                onChange={(e) => handleSaveGithubSettings(e.target.value, githubToken)}
+                className="w-full bg-console-panel border border-console-border rounded px-3 py-2 text-xs text-console-text-main focus:outline-none focus:border-console-accent-cyan transition-ui"
+              />
+              <input 
+                type="password" 
+                placeholder="Personal Access Token (PAT)" 
+                value={githubToken}
+                onChange={(e) => handleSaveGithubSettings(githubRepo, e.target.value)}
+                className="w-full bg-console-panel border border-console-border rounded px-3 py-2 text-xs text-console-text-main focus:outline-none focus:border-console-accent-cyan transition-ui"
+              />
+            </div>
+
+            <button
+              onClick={handleSync}
+              disabled={isSyncing || !githubRepo || !githubToken}
+              className="interactive w-full bg-console-text-main text-console-bg font-bold uppercase tracking-widest text-xs rounded py-3 transition flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSyncing ? (
+                <div className="w-4 h-4 border-2 border-console-bg/30 border-t-console-bg rounded-full animate-spin" />
+              ) : (
+                <>
+                  <span className="text-base">🐙</span>
+                  {syncStatus === 'success' ? '[ Synced Successfully! ]' : '[ Push to GitHub ]'}
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
     </div>
