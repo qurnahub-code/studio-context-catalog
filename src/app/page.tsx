@@ -433,7 +433,7 @@ Add ContextFlow to your AI agent's MCP servers. In your editor, type \`/evaluate
       <header className="border-b border-console-border p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="text-console-accent-cyan text-xl">⚡</span>
-          <h1 className="font-bold tracking-wider">SUFYAN STUDIO ENGINE</h1>
+          <h1 className="font-bold tracking-wider">CONTEXTFLOW ENGINE</h1>
         </div>
         <div className="flex items-center gap-6 font-mono text-sm text-console-text-muted">
           <button 

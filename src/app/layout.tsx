@@ -13,7 +13,7 @@ const firaCode = Fira_Code({
 });
 
 export const metadata: Metadata = {
-  title: "Sufyan Studio Engine | Developer Console",
+  title: "ContextFlow Engine | Developer Console",
   description: "Automated Context Ingestion Engine & Versioned Project Catalog",
 };
 
