@@ -123,9 +123,18 @@ export default function Home() {
     '.windsurfrules', '.clinerules', '.roomodes', 'SYSTEM_PROMPT'
   ]);
 
+  // Create a map of the latest commit per project+category
+  const latestCommitsMap = new Map<string, CommitLog>();
+  commits.forEach(c => {
+    const key = `${c.project}-${c.category}`;
+    if (!latestCommitsMap.has(key)) {
+      latestCommitsMap.set(key, c);
+    }
+  });
+
   const compilationFiles = selectedCompilationProject 
-    ? commits
-        .filter(c => c.project === selectedCompilationProject && !EXCLUDED_CATEGORIES.has(c.category))
+    ? Array.from(latestCommitsMap.values())
+        .filter(c => c.project === selectedCompilationProject && !EXCLUDED_CATEGORIES.has(c.category) && c.content !== '[DELETED]')
         .map(c => ({
           file_path: `${c.category}.md`,
           content: c.content
@@ -153,13 +162,15 @@ export default function Home() {
     fetchCommits();
   }, []);
 
-  // Derive projects dynamically from commits
+  // Derive projects dynamically from the latest commits, excluding deleted nodes
   const projectsMap = new Map<string, Set<string>>();
-  commits.forEach(c => {
-    if (!projectsMap.has(c.project)) {
-      projectsMap.set(c.project, new Set());
+  latestCommitsMap.forEach(c => {
+    if (c.content !== '[DELETED]') {
+      if (!projectsMap.has(c.project)) {
+        projectsMap.set(c.project, new Set());
+      }
+      projectsMap.get(c.project)?.add(c.category);
     }
-    projectsMap.get(c.project)?.add(c.category);
   });
 
   const handleOpenInfrastructure = (filename: string) => {
@@ -170,6 +181,34 @@ export default function Home() {
       content = `# SYSTEM TOKENS\n\n- Primary: #38bdf8 (Cyan)\n- Background: #020617 (Slate 950)\n- Border: #1e293b (Slate 800)\n- Success: #10b981 (Emerald)\n- Danger: #ef4444 (Red)`;
     }
     setInspectedFile({ name: `Infrastructure / ${filename}`, content });
+  };
+
+  const handleDeleteNode = async (project: string, category: string) => {
+    const confirmed = window.confirm(`Are you sure you want to delete ${category}.md?\n\nThis will create a deletion commit in the timeline.`);
+    if (!confirmed) return;
+    
+    const hash = await generateCommitId('[DELETED]', Date.now());
+    
+    const newDbCommit = {
+      id: hash,
+      project_id: project,
+      category: category,
+      content: '[DELETED]',
+      is_new_project: false,
+    };
+
+    await supabase.from('commits').insert([newDbCommit]);
+
+    const newCommitLog: CommitLog = {
+      id: hash,
+      project: project,
+      time: 'Just now',
+      content: '[DELETED]',
+      category: category,
+      isNewProject: false,
+    };
+
+    setCommits(prev => [newCommitLog, ...prev]);
   };
 
   const handleOpenFile = (project: string, category: string) => {
@@ -453,9 +492,20 @@ export default function Home() {
                               });
                             }
                           }}
-                          className="text-console-text-muted hover:text-console-accent-cyan opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                          className="text-console-text-muted hover:text-console-accent-cyan opacity-0 group-hover:opacity-100 transition-opacity text-xs ml-auto"
+                          title="Edit Node"
                         >
                           [✎]
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteNode(project, cat);
+                          }}
+                          className="text-console-text-muted hover:text-console-git-del opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                          title="Delete Node"
+                        >
+                          [🗑]
                         </button>
                       </li>
                     ))}
@@ -548,7 +598,11 @@ export default function Home() {
                   <span className="text-console-text-muted">[</span>
                   <span className="text-console-accent-cyan">{commit.project}</span>
                   <span className="text-console-text-muted">/</span>
-                  <span className="text-console-git-add">{commit.category}.md</span>
+                  {commit.content === '[DELETED]' ? (
+                    <span className="text-console-git-del opacity-80 line-through" title="Deleted Node">{commit.category}.md</span>
+                  ) : (
+                    <span className="text-console-git-add">{commit.category}.md</span>
+                  )}
                   <span className="text-console-text-muted">]</span>{' '}
                   <span className="text-console-text-main">{commit.id}</span>
                 </div>
